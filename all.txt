@@ -1,0 +1,469 @@
+-- practical 2
+
+use practice1;
+create table customers (cust_id int primary key,cust_name varchar(50),product varchar(50),quantity int,total_price double);
+alter table customers modify cust_id int auto_increment;
+insert into customers (cust_id,cust_name,product,quantity,total_price)values
+(101,"Junaid","Mobile",3,120000),
+(102,"Saif","Car",1,2100000),
+(103,"Sarthak","Bike",1,350000),
+(104,"Nonu","House",1,32222222),
+(105,"Sumit","Farm",2,21833);
+alter  table customers add price_per_qnt float;
+create view cust_view as select cust_id,cust_name from customers ;
+alter view cust_view as select cust_id,product,total_price from customers;
+drop view cust_view;
+create index cust_index on customers(cust_name);
+drop index cust_index on customers;
+select x.cust_id,x.cust_name,x.product from customers as x;
+drop table customers;
+
+
+
+
+-- //Practical 3
+
+create table student (roll_no int ,name varchar(50),division varchar(20),branch varchar(50),city varchar(50),marks float);
+insert into student values
+(101,"Junaid","B","CSEAI","Pandharpur",87.83),
+(102,"Sarthak","B","CSEAI","karad",97.83),
+(103,"varad","B","CSEAI","aurangabad",82.83),
+(104,"harsh","B","CSEAI","chakan",91.83),
+(105,"sarvesh","B","CSEAI","nandurbar",79.83),
+(106,"tanmay","B","CSEAI","nashik",87.83),
+(107,"rudra","B","CSEAI","pune",90.93),
+(108,"govind","A","CSEAI","satara",91.83),
+(109,"ayush","B","CSEAI","solapur",85.33),
+(110,"sushant","B","CSEAI","wagholi",80.03);
+select name,city from student;
+select distinct name from student;
+select * from student;
+select name, marks from student where marks>75;
+select * from student where name like "S%";
+select name from student where marks between 50 and 82;
+select name from student where branch="CSEAI" and city="pune";
+set sql_safe_updates=0;
+update student set marks=60 where name="tanmay";
+update student set branch="IT" where roll_no=109;
+delete from student where division="A";
+create table TE_student (Roll_no int,name varchar(50));
+insert into TE_student values(111,"Sanika");
+select roll_no from student union select roll_no from TE_student;
+select upper(name) from student;
+select bin(marks),hex(marks) from student;
+
+
+-- practical 4
+
+create table customers (id int ,name varchar(50),age int ,address varchar(50),salary int);
+create table orders (o_id int ,o_date date,cust_id int ,ammount double);
+insert into customers values (101,"junaid",21,"pune",200022),
+                                              (102,"govind",20,"satara",20122),
+                                              (103,"pune",21,"pune",145672),
+                                              (104,"sarthak",20,"karad",6543456),
+                                              (105,"saif",21,"vai",67656);
+insert into orders values (1,'2024-11-21',101,440),
+                          (2,'2024-11-22',109,440),
+                          (3,'2024-11-22',103,440),
+                          (4,'2024-11-21',104,440),
+                          (5,'2024-11-23',111,440);
+select customers.id,customers.name,orders.ammount,orders.o_date from customers inner join orders on customers.id=orders.cust_id;
+select customers.id,customers.name,orders.ammount,orders.o_date from customers left join orders on customers.id=orders.cust_id;
+select customers.id,customers.name,orders.ammount,orders.o_date from customers right outer join orders on customers.id=orders.cust_id;
+select customers.id,customers.name,orders.ammount,orders.o_date from customers inner join orders on customers.id=orders.cust_id union all select customers.id,customers.name,orders.ammount,orders.o_date from customers right join orders on customers.id=orders.cust_id;
+select customers.id,customers.name,orders.ammount,orders.o_date from customers cross join orders;
+select * from customers where salary > 200000;
+create table cust_bck as select *from customers;
+update customers set salary=salary*1.10 where age<=21;
+ DELETE FROM Customers   WHERE Age > 20;
+ 
+ drop table Borrower;
+ drop table fine;
+ 
+ 
+--  --practical 5
+
+-- Borrower Table
+-- Create the Borrower table
+CREATE TABLE Borrower (
+    Roll_no INT PRIMARY KEY,
+    Name VARCHAR(100),
+    Date_of_Issue DATE,
+    Name_of_Book VARCHAR(200),
+    Status CHAR(1) CHECK (Status IN ('I', 'R'))
+);
+
+-- Create the Fine table
+CREATE TABLE Fine (
+    Roll_no INT REFERENCES Borrower(Roll_no),
+    Fine_Date DATE,
+    Amt DECIMAL(10, 2)
+);
+
+DELIMITER $$
+
+CREATE PROCEDURE ReturnBook(
+    IN p_roll_no INT,       -- Input: Roll number
+    IN p_book_name VARCHAR(200) -- Input: Book name
+)
+BEGIN
+    DECLARE v_date_of_issue DATE;
+    DECLARE v_status CHAR(1);
+    DECLARE v_days_difference INT;
+    DECLARE v_fine_amount DECIMAL(10, 2) DEFAULT 0;
+
+    -- Fetch the Date_of_Issue and Status for the specified roll number and book
+    SELECT Date_of_Issue, Status
+    INTO v_date_of_issue, v_status
+    FROM Borrower
+    WHERE Roll_no = p_roll_no AND Name_of_Book = p_book_name;
+
+    -- Check if the book is already returned
+    IF v_status = 'R' THEN
+        SELECT 'Book has already been returned!' AS Message;
+    END IF;
+
+    -- Calculate the number of days since the book was issued
+    SET v_days_difference = DATEDIFF(CURDATE(), v_date_of_issue);
+
+    -- Determine the fine amount
+    IF v_days_difference BETWEEN 15 AND 30 THEN
+        SET v_fine_amount = v_days_difference * 5;
+    ELSEIF v_days_difference > 30 THEN
+        SET v_fine_amount = v_days_difference * 50;
+    END IF;
+
+    -- Update the Borrower table to mark the book as returned
+    UPDATE Borrower
+    SET Status = 'R'
+    WHERE Roll_no = p_roll_no AND Name_of_Book = p_book_name;
+
+    -- Insert into the Fine table if a fine is applicable
+    IF v_fine_amount > 0 THEN
+        INSERT INTO Fine (Roll_no, Fine_Date, Amt)
+        VALUES (p_roll_no, CURDATE(), v_fine_amount);
+    END IF;
+
+    -- Output the result
+    SELECT 'Book returned successfully!' AS Result;
+    IF v_fine_amount > 0 THEN
+        SELECT CONCAT('Fine Amount: Rs ', v_fine_amount) AS FineDetails;
+    ELSE
+        SELECT 'No fine applicable.' AS FineDetails;
+    END IF;
+END$$
+
+DELIMITER ;
+-- Insert sample data into Borrower table
+INSERT INTO Borrower 
+VALUES (101, 'Junaid', '2024-10-01', 'Great Indians', 'I'),
+       (102, 'Ali', '2024-11-01', 'Introduction to AI', 'I'),
+       (103, 'Sara', '2024-09-20', 'Machine Learning', 'I');
+
+CALL ReturnBook(101, 'Great Indians');
+
+SELECT * FROM Borrower;
+
+SELECT * FROM Fine;
+
+
+
+
+-- --///////////////////////// 
+
+-- practical 6
+
+CREATE TABLE IF NOT EXISTS N_RollCall ( 
+roll_no INT PRIMARY KEY, 
+student_name VARCHAR(100), 
+attendance_date DATE 
+); 
+CREATE TABLE IF NOT EXISTS O_RollCall ( 
+roll_no INT PRIMARY KEY, 
+student_name VARCHAR(100), 
+attendance_date DATE 
+); 
+DELIMITER // 
+CREATE PROCEDURE  merge_rollcalls() 
+BEGIN 
+DECLARE done INT DEFAULT FALSE; 
+DECLARE v_roll_no INT; 
+DECLARE v_student_name VARCHAR(100); 
+DECLARE v_attendance_date DATE; -- Declare a cursor to iterate through the N_RollCall table 
+DECLARE cur_rollcall CURSOR FOR  
+SELECT roll_no, student_name, attendance_date FROM N_RollCall; -- Declare a handler for when the cursor reaches the end 
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE; 
+OPEN cur_rollcall; 
+read_loop: LOOP 
+FETCH cur_rollcall INTO v_roll_no, v_student_name, v_attendance_date; 
+IF done THEN 
+LEAVE read_loop; 
+END IF; -- Check if the record exists in O_RollCall 
+IF NOT EXISTS (SELECT 1 FROM O_RollCall WHERE roll_no = v_roll_no) THEN 
+INSERT INTO O_RollCall (roll_no, student_name, attendance_date) 
+VALUES (v_roll_no, v_student_name, v_attendance_date); 
+END IF; 
+END LOOP; 
+CLOSE cur_rollcall; 
+END // 
+DELIMITER ; 
+INSERT INTO O_RollCall (roll_no, student_name, attendance_date)  
+VALUES  
+(101, 'John Doe', '2024-08-25'), -- Same roll_no as in N_RollCall 
+(106, 'David Green', '2024-08-30'), -- New roll_no 
+(107, 'Eve Blue', '2024-09-01'); 
+INSERT INTO N_RollCall (roll_no, student_name, attendance_date)  
+VALUES  
+(111, 'John Doe', '2024-09-01'), 
+(112, 'Jane Smith', '2024-09-02'), 
+(113, 'Alice Brown', '2024-09-01'), 
+(114, 'Bob White', '2024-09-03'), 
+(115, 'Charlie Black', '2024-09-04'); 
+DELIMITER  // 
+CALL merge_rollcalls(); 
+DELIMITER ; 
+select * from O_RollCall;
+select * from N_RollCall;
+
+-- //////////////////////
+
+-- practical 7
+
+CREATE TABLE IF NOT EXISTS Stud_Marks ( 
+name VARCHAR(50), 
+total_marks INT 
+); 
+INSERT INTO Stud_Marks (name, total_marks) VALUES 
+('John', 1000), 
+('Alice', 950), 
+('Bob', 870), 
+('Carol', 820), 
+('David', 1500); 
+CREATE TABLE IF NOT EXISTS Result ( 
+Roll INT AUTO_INCREMENT PRIMARY KEY, 
+Name VARCHAR(50), 
+Class VARCHAR(50) 
+); 
+Delimiter $$ 
+CREATE PROCEDURE  proc_Grade ( 
+IN student_name VARCHAR(50),  
+IN total_marks INT 
+) 
+BEGIN 
+DECLARE grade VARCHAR(50); -- Categorize students based on their total marks 
+IF total_marks >= 990 AND total_marks <= 1500 THEN 
+SET grade = 'Distinction'; 
+ELSEIF total_marks >= 900 AND total_marks <= 989 THEN 
+SET grade = 'First Class'; 
+ELSEIF total_marks >= 825 AND total_marks <= 899 THEN 
+SET grade = 'Higher Second Class'; 
+ELSE 
+SET grade = 'Other'; 
+END IF;
+INSERT INTO Result (Name, Class) VALUES (student_name, grade); 
+END $$ 
+CREATE PROCEDURE proc_CategorizeStudents() 
+BEGIN -- Declare variables 
+DECLARE done INT DEFAULT 0; 
+DECLARE student_name VARCHAR(50); 
+DECLARE marks INT; -- Cursor to iterate over all students in Stud_Marks 
+DECLARE cur CURSOR FOR 
+SELECT name, total_marks FROM Stud_Marks; -- Declare a handler for the end of the cursor 
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1; 
+OPEN cur; 
+read_loop: LOOP -- Fetch student name and marks 
+FETCH cur INTO student_name, marks; 
+IF done = 1 THEN 
+LEAVE read_loop; 
+END IF; 
+CALL proc_Grade(student_name, marks); 
+END LOOP; 
+CLOSE cur; 
+END $$ 
+DELIMITER ; 
+call proc_CategorizeStudents(); 
+select * from result; 
+
+
+-- ///////////////////
+
+
+-- practical 8-- Step 1: Create Library table
+
+drop table Library;
+drop table Library_Audit;
+CREATE TABLE IF NOT EXISTS Library ( 
+    book_id INT PRIMARY KEY, 
+    title VARCHAR(100), 
+    author VARCHAR(100), 
+    published_year INT, 
+    quantity INT 
+);
+
+-- Step 2: Create Library_Audit table
+
+CREATE TABLE IF NOT EXISTS Library_Audit ( 
+    audit_id INT AUTO_INCREMENT PRIMARY KEY, 
+    action_type VARCHAR(10), 
+    book_id INT, 
+    title VARCHAR(100), 
+    author VARCHAR(100), 
+    published_year INT, 
+    quantity INT, 
+    action_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
+);
+
+-- Step 3: Create Trigger for updates
+DELIMITER $$
+
+CREATE TRIGGER after_library_update 
+AFTER UPDATE ON Library 
+FOR EACH ROW 
+BEGIN 
+    INSERT INTO Library_Audit (action_type, book_id, title, author, published_year, quantity) 
+    VALUES ('UPDATE', OLD.book_id, OLD.title, OLD.author, OLD.published_year, OLD.quantity); 
+END $$
+
+-- Step 4: Create Trigger for deletes
+CREATE TRIGGER after_library_delete 
+AFTER DELETE ON Library 
+FOR EACH ROW 
+BEGIN 
+    INSERT INTO Library_Audit (action_type, book_id, title, author, published_year, quantity) 
+    VALUES ('DELETE', OLD.book_id, OLD.title, OLD.author, OLD.published_year, OLD.quantity); 
+END $$
+
+DELIMITER ;
+
+-- Step 5: Insert initial data into Library table
+INSERT INTO Library (book_id, title, author, published_year, quantity)  
+VALUES (1, 'Book Title 1', 'Author 1', 2020, 10),
+       (2, 'Book Title 2', 'Author 2', 2021, 15);
+
+-- Step 6: Perform an UPDATE operation
+UPDATE Library 
+SET title = 'Updated Book Title 1' 
+WHERE book_id = 1;
+
+-- Step 7: Perform a DELETE operation
+DELETE FROM Library 
+WHERE book_id = 1;
+
+-- Step 8: Query the Library_Audit table to verify audit records
+SELECT * FROM Library_Audit;
+
+
+
+
+
+
+
+pr10 mongo 
+
+db.createCollection("Employee")
+
+db.Employee.insertMany([
+{name:"Junaid",age:21,Marks:87,city:"pandharpur"},
+{name:"varad",age:20,Marks:90,city:"Aurangabad"},
+{name:"Govind",age:20,Marks:91,city:"Satara"}])
+
+db.Employee.find()
+
+db.Employee.find().pretty()
+
+db.Employee.find({name:"Isha"})
+
+db.Employee.find({age:{$gt:20}})
+
+db.Employee.updateOne({name:"OM",city:"pune"},{$set:{city:"nashik"}})
+
+db.Employee.updateOne({name:"OM",age:22},{$inc:{age:30}})
+
+db.Employee.updateOne({name:"OM"},{$addToSet:{email:"junaid@2122gmail.com"}})
+
+db.Employee.deleteMany({age:21})
+
+db.Employee.find().sort({name:1})
+
+db.Employee.find().limit(2)
+
+
+
+
+-- Pr11 MongoAggregation and Indexing
+
+db.createCollection.Product
+
+db.Product.insertMany(
+{name:"junaid",company:"google",cost:20000},
+  {name:"varad",company:"java",cost:4324},
+  {name:"Sahil",company:"lux",cost:323})
+
+db.Product.aggregate([
+{$group:{
+_id: "$company",
+minprice:{$min: "$cost"},
+maxprice:{$max: "$cost"}
+}
+}
+])
+
+db.Product.find().sort({company:1})
+
+db.Product.countDocuments() 
+
+db.Product.distinct("company")
+
+db.Product.aggregate([
+  {
+    $group: {
+      _id: "$company",
+      count: { $sum: 1 }
+    }
+  }
+])
+
+db.Product.find().limit(1)
+
+db.Product.find().skip(2)
+
+for (let i=1;i<=10;i++){
+db.staff.insertOne({
+Staff_id:i,
+Name:"Staff " +i,
+age:Math.floor(Math.random()*50)+20
+})
+}
+
+db.staff.find({Staff_id:2}).explain("executionStats")
+
+db.staff.createIndex({Name:1})
+
+db.Product.dropIndex({Name:1})
+
+
+
+
+-- pr12 mongo mapreduce\
+
+db.createCollection("Staffs")
+
+db.Staffs.insertMany([{ name: "John", age: 30, address: "New York" },
+  { name: "Alice", age: 25, address: "California" },
+  { name: "John", age: 35, address: "Chicago" },
+  { name: "Alice", age: 28, address: "Texas" },
+  { name: "Bob", age: 40, address: "Florida" }])
+
+var mapfunction=function(){emit(this.name,this.age);};
+var reducefunction=function(key,values){return Array.sum(values);};
+
+db.Staffs.mapReduce(mapfunction,reducefunction,{out:"Staff_Age_Summary"});
+
+db.Staff_Age_Summary.find()
+
+
+
+
+
+
+
